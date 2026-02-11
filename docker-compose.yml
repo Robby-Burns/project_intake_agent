@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  agent-app:
+    build:
+      context: .
+      args:
+        # Change to en_core_web_sm for local docker builds if space is tight
+        SPACY_MODEL: en_core_web_lg
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      - SPACY_MODEL=en_core_web_lg
+    volumes:
+      # Mount the app directory for live reloading during development
+      - ./app:/app/app
+      - ./docs:/app/docs
+    restart: unless-stopped

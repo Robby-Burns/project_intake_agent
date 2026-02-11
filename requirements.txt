@@ -1,0 +1,48 @@
+# ================================================================================
+# DEVELOPMENT REQUIREMENTS - FLEXIBLE VERSIONS ONLY
+# ================================================================================
+# Generated: February 2026
+# Usage: pip install -r requirements.txt
+#
+# CRITICAL: This file uses FLEXIBLE versions (>=, ~=, <)
+# NEVER use == in this file. For exact versions, see requirements-lock.txt
+# ================================================================================
+
+# Core Framework
+fastapi>=0.109,<1.0
+uvicorn[standard]>=0.27,<1.0
+pydantic>=2.6,<3.0
+python-dotenv>=1.0
+pyyaml>=6.0
+requests>=2.31,<3.0
+
+# LLM & Agents
+langchain>=0.1,<0.2
+langchain-openai>=0.0.5,<1.0
+langchain-core>=0.1,<0.2
+langgraph>=0.0.10,<1.0
+
+# Database & Storage
+sqlalchemy>=2.0,<3.0
+asyncpg>=0.29,<1.0
+
+# PDF Generation
+reportlab>=4.0,<5.0
+
+# UI (Phase 2)
+streamlit>=1.30,<2.0
+
+# Security (Phase 2)
+presidio-analyzer>=2.2,<3.0
+presidio-anonymizer>=2.2,<3.0
+spacy>=3.7,<4.0
+
+# Testing (always latest)
+pytest>=8.0
+pytest-asyncio>=0.23
+pytest-cov>=4.1
+pytest-mock>=3.12
+
+# Utilities
+aiofiles>=23.0
+regex>=2023.10

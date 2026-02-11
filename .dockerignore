@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+.dockerignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+venv
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDEs
+.idea
+.vscode
+
+# Project Specific
+*.pdf
+reports/
+tests/
+docs/
+test_conversation.py
+test_pdf.py
+README.md
+SETUP.md

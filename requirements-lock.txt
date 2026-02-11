@@ -1,0 +1,29 @@
+# ================================================================================
+# PRODUCTION REQUIREMENTS - EXACT LOCKED VERSIONS
+# ================================================================================
+# Generated: February 2026
+#
+# CRITICAL: This file contains EXACT versions (==) for reproducible deployments
+# ================================================================================
+
+fastapi==0.109.2
+uvicorn==0.27.1
+pydantic==2.6.1
+python-dotenv==1.0.1
+pyyaml==6.0.1
+langchain==0.1.9
+langchain-openai==0.0.8
+langchain-core==0.1.26
+langgraph==0.0.24
+sqlalchemy==2.0.27
+asyncpg==0.29.0
+reportlab==4.0.9
+pytest==8.0.1
+pytest-asyncio==0.23.5
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+aiofiles==23.2.1
+regex==2023.10.3
+openai==1.12.0
+httpx==0.27.0
+typing-extensions==4.9.0
