@@ -6,10 +6,20 @@
 
 import yaml
 from pydantic_settings import BaseSettings
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from typing import List, Optional
 
 # --- Pydantic Models for scale.yaml structure ---
+
+class DeploymentConfig(BaseModel):
+    tier: str
+    environment: str
+    risk_score: int
+
+class ContextManagementConfig(BaseModel):
+    max_history_messages: int
+    truncation_strategy: str
+    rag_top_k_results: int
 
 class LLMConfig(BaseModel):
     provider: str
@@ -22,6 +32,19 @@ class LLMDetailConfig(BaseModel):
 
 class DatabaseConfig(BaseModel):
     type: str
+
+class OrchestrationConfig(BaseModel):
+    engine: str
+    max_turns: int
+    soft_limit_turns: int
+
+class SecurityConfig(BaseModel):
+    pii_redaction: bool
+    pii_allow_list: List[str]
+
+class CostControlsConfig(BaseModel):
+    hard_limit_usd: float
+    alert_threshold_usd: float
 
 class AuditConfig(BaseModel):
     schedule_months: List[int]
@@ -36,21 +59,20 @@ class AuditConfig(BaseModel):
 class AppConfig(BaseSettings):
     """
     Loads configuration from scale.yaml and environment variables.
+    This model is now fully type-safe.
     """
-    deployment: dict
-    context_management: dict
-    orchestration: dict
+    deployment: DeploymentConfig
+    context_management: ContextManagementConfig
+    orchestration: OrchestrationConfig
     llm: LLMDetailConfig
     database: DatabaseConfig
-    security: dict
-    cost_controls: dict
+    security: SecurityConfig
+    cost_controls: CostControlsConfig
     audit: AuditConfig
 
     class Config:
         env_file = '.env'
         env_file_encoding = 'utf-8'
-        # FIX: Tell Pydantic to ignore extra variables from the .env file
-        # that are not defined in this model.
         extra = 'ignore'
 
 def load_config(path: str = "config/scale.yaml") -> AppConfig:
@@ -63,7 +85,6 @@ def load_config(path: str = "config/scale.yaml") -> AppConfig:
         
         config = AppConfig(**config_data)
 
-        # Hard safety check: auto_apply must never be True
         if config.audit.auto_apply:
             raise ValueError(
                 "FATAL: audit.auto_apply is True in scale.yaml. "
@@ -77,6 +98,4 @@ def load_config(path: str = "config/scale.yaml") -> AppConfig:
         raise ValueError(f"Error loading or validating configuration: {e}")
 
 # --- Global Config Instance ---
-# Load the configuration once when the module is imported
-# This ensures it's available to all other modules.
 config = load_config()

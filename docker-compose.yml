@@ -14,8 +14,6 @@ services:
       - "8000:8000"
     env_file:
       - .env
-    environment:
-      - DATABASE_URL=postgresql://user:pass@db:5432/intake_agent
     depends_on:
       db:
         condition: service_healthy
@@ -24,19 +22,11 @@ services:
   ui:
     build:
       context: .
-    # --- DEBUGGING COMMAND ---
-    # Temporarily override the startup command to print environment variables and exit.
-    # This will verify if the .env file is being loaded correctly.
-    command: printenv
-    # Original command (commented out):
-    # command: streamlit run app/ui.py --server.port=8501 --server.address=0.0.0.0
+    command: streamlit run app/ui.py --server.port=8501 --server.address=0.0.0.0
     ports:
       - "8501:8501"
     env_file:
       - .env
-    environment:
-      - DATABASE_URL=postgresql://user:pass@db:5432/intake_agent
-      - API_URL=http://api:8000
     depends_on:
       db:
         condition: service_healthy

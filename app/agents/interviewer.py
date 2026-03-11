@@ -15,10 +15,11 @@ class InterviewerAgent(BaseAgent):
     """
     
     def __init__(self):
+        # FIX: Use 'model_type' instead of 'model' to match BaseAgent constructor
         super().__init__(
             name="Interviewer", 
             role="Project Intake Coordinator", 
-            model="gpt-4o"
+            model_type="primary"
         )
         
         self.prompt = ChatPromptTemplate.from_messages([

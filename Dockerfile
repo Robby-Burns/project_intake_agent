@@ -23,11 +23,16 @@ COPY pyproject.toml .
 # Install dependencies using uv
 RUN uv pip install --system --no-cache -r pyproject.toml
 
+# FIX: Download the spaCy model data into this builder stage
+# Default to the small model for faster builds; can be overridden.
+ARG SPACY_MODEL=en_core_web_sm
+RUN python -m spacy download ${SPACY_MODEL}
+
 # Stage 2: Runtime (Slim production image)
 FROM python:3.12-slim
 WORKDIR /app
 
-# Copy installed dependencies from builder
+# Copy installed dependencies and spaCy model from builder
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 

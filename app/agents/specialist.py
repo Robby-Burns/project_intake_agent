@@ -24,8 +24,9 @@ class SpecialistAgent(BaseAgent):
     Analyzes input and 'whispers' questions.
     """
     
-    def __init__(self, name: str, role: str, domain_focus: str, model: str = "gpt-4o"):
-        super().__init__(name, role, model)
+    # FIX: Change 'model' to 'model_type' to match BaseAgent constructor
+    def __init__(self, name: str, role: str, domain_focus: str, model_type: str = "primary"):
+        super().__init__(name, role, model_type)
         self.domain_focus = domain_focus
         self.parser = PydanticOutputParser(pydantic_object=SpecialistOutput)
         
