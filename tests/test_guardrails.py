@@ -1,3 +1,8 @@
+# 🛡️ Guardrail Tests - Ensures security and data protection mechanisms are working.
+# This file verifies the "Worst-Case Coding Standard" by testing the PII filter's
+# ability to correctly identify and redact sensitive information.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
+
 import pytest
 from app.guardrails.pii_filter import PIIFilter
 

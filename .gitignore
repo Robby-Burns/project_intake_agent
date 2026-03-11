@@ -1,3 +1,8 @@
+# This file specifies intentionally untracked files to ignore.
+# It is configured to ignore secrets (.env), local state, and IDE files,
+# adhering to the security and collaboration principles of the framework.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
+
 # Python
 __pycache__/
 *.py[cod]

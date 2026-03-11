@@ -1,3 +1,9 @@
+# 📦 Project Dependencies - Defines the project's dependencies and metadata.
+# This file adheres to the "Reproducible Builds" principle from the framework.
+# All dependencies are managed here, and the `uv.lock` file is generated from it.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
+# Reference: workflow/03_DEPENDENCY_MANAGEMENT.md
+
 [project]
 name = "ProjectIntakeAgentThree"
 version = "1.0.0"

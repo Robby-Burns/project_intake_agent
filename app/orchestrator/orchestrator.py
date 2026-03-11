@@ -1,3 +1,8 @@
+# 🎼 The Orchestrator - The "Whisper Engine" of the system.
+# This file implements the core logic of the 5-Phase Loop (Read, Research, Act, Update, Recognize)
+# by managing agent execution, state, and final reporting.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
+
 import asyncio
 import os
 import uuid
@@ -9,7 +14,7 @@ from app.agents.specialist import SpecialistAgent
 from app.agents.interviewer import InterviewerAgent
 from app.guardrails.pii_filter import PIIFilter
 from app.pdf.generator import PDFGenerator
-from app.factories.pm_tool_factory import PMToolFactory # <-- CORRECT IMPORT
+from app.factories.pm_tool_factory import PMToolFactory
 from app.factories.database_factory import DatabaseFactory
 from app.config import config
 
@@ -22,13 +27,12 @@ class Orchestrator:
     The 'Whisper Engine' Orchestrator.
     Manages the parallel execution of 8 specialist agents and the interviewer.
     Refactored to use DatabaseFactory for persistence and LLMFactory (via BaseAgent).
-    Reference: workflow/02_COMPLETE_GUIDE.md
     """
     
     def __init__(self, session_id: Optional[str] = None):
         self.session_id = session_id or str(uuid.uuid4())
         self.db_adapter = DatabaseFactory.get_adapter()
-
+        
         # Initialize Interviewer
         self.interviewer = InterviewerAgent()
         
@@ -105,7 +109,6 @@ class Orchestrator:
             self.unanswered_questions = []
         
         self.pdf_generator = PDFGenerator()
-        # FIX: Use the new factory
         self.pm_tool = PMToolFactory.get_adapter()
         
         # Limits from config
@@ -122,8 +125,6 @@ class Orchestrator:
             "project_name": self.project_name,
             "stakeholders": self.stakeholders,
             "state": self.state,
-            # For MVP, not persisting unanswered_questions fully to DB as it's complex object
-            # Ideally, use a dedicated table or JSON field
         }
         self.db_adapter.save_metadata(self.session_id, metadata)
 
@@ -138,7 +139,6 @@ class Orchestrator:
         # 1. Guardrails: PII Redaction
         allow_list = []
         if self.state in ["GET_NAME", "GET_STAKEHOLDERS", "GET_PROJECT"]:
-            # Config-driven allow list
             if "PERSON" in config.security.pii_allow_list:
                 allow_list.append("PERSON")
             
@@ -169,18 +169,15 @@ class Orchestrator:
             self.stakeholders = sanitized_input
             self.state = "INTERVIEW"
             response = "Thank you. Let's begin the intake. Please describe the project goals."
-
-        # If state machine generated a response, save and return
+        
         if response:
             self.db_adapter.save_conversation_turn(self.session_id, user_input, response)
             self.save_state()
             return response
 
-        # Check for exit condition
         if "generate report" in sanitized_input.lower() or "end interview" in sanitized_input.lower():
             return await self.finalize_session()
             
-        # Check Turn Limits
         current_turns = len(self.conversation_history)
         if current_turns >= self.max_turns:
             return await self.finalize_session()
@@ -191,7 +188,6 @@ class Orchestrator:
         ]
         results = await asyncio.gather(*specialist_tasks)
         
-        # Filter and Rank Whispers
         active_whispers = []
         for agent, result in zip(self.specialists, results):
             if result.relevant:
@@ -204,16 +200,13 @@ class Orchestrator:
                 active_whispers.append(whisper)
                 self.unanswered_questions.append(whisper)
 
-        # Sort by Priority (Highest first)
         active_whispers.sort(key=lambda x: x['priority'], reverse=True)
         
         # 4. Interviewer Synthesis
         context_summary = f"Project: {self.project_name}. User: {self.user_name}. Stakeholders: {self.stakeholders}."
         
-        # Get recent history (last 3 turns)
         recent_history = "\n".join([f"User: {entry['user']}\nBot: {entry['bot']}" for entry in self.conversation_history[-3:]])
         
-        # Inject "Soft Limit" warning if needed
         if current_turns >= self.soft_limit:
             context_summary += " [SYSTEM NOTE: We are approaching the time limit. Start wrapping up.]"
         
@@ -224,21 +217,18 @@ class Orchestrator:
             recent_history=recent_history
         )
         
-        # Update History & Save
         self.conversation_history.append({"user": sanitized_input, "bot": response})
         self.db_adapter.save_conversation_turn(self.session_id, sanitized_input, response)
         self.save_state()
-
+        
         return response
 
     async def finalize_session(self) -> str:
         """
         Generates the PDF report, creates a PM ticket, and ends the session.
         """
-        # Reconstruct transcript from DB history
         transcript_text = "\n".join([f"User: {entry['user']}\nBot: {entry['bot']}" for entry in self.conversation_history])
         
-        # 1. Generate Executive Summary & Key Findings (Interviewer Agent)
         parser = PydanticOutputParser(pydantic_object=FinalReportOutput)
         summary_prompt = [
             SystemMessage(content="You are an expert Project Analyst. Summarize the following project intake interview."),
@@ -261,13 +251,11 @@ class Orchestrator:
             key_findings = ["Error generating key findings."]
             print(f"Error generating summary: {e}")
 
-        # 2. Generate Domain Summaries (All Specialists in Parallel)
         summary_tasks = [
             agent.generate_summary(transcript_text, project_name=self.project_name) for agent in self.specialists
         ]
         domain_summaries = await asyncio.gather(*summary_tasks)
         
-        # 3. Organize Data for PDF
         specialist_data = {}
         for agent, summary in zip(self.specialists, domain_summaries):
             agent_questions = [
@@ -282,7 +270,6 @@ class Orchestrator:
                 "questions": top_5_questions
             }
         
-        # 4. Generate PDF
         filename = f"{self.project_name.replace(' ', '_')}_Report.pdf"
         self.pdf_generator.filename = filename
         
@@ -297,7 +284,6 @@ class Orchestrator:
             transcript=self.conversation_history
         )
         
-        # 5. Create PM Ticket
         ticket_link = "Ticket creation failed"
         if success:
             try:

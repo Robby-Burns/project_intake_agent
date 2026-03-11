@@ -1,4 +1,6 @@
 # 🚀 Main Application Entry Point (FastAPI)
+# This file adheres to the principles outlined in agent.md, particularly for system health and auditability.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
 # Reference: workflow/06_INFRASTRUCTURE_AS_CODE.md
 # Reference: workflow/09_AUDIT_AND_MAINTENANCE.md
 

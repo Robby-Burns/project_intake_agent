@@ -1,3 +1,8 @@
+# 🎨 Streamlit UI - The user-facing component of the agent system.
+# This file adheres to the principles outlined in agent.md by providing a clear user interface
+# and handling the lifecycle of the Orchestrator.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
+
 import streamlit as st
 import asyncio
 import os

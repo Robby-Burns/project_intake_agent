@@ -1,5 +1,9 @@
 # 🏗️ Application Configuration Loader
+# This file loads configuration from scale.yaml, enforcing the "Configuration as Code" principle.
+# It includes a hard safety check for `audit.auto_apply` as mandated by the framework.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
 # Reference: workflow/07_CONFIGURATION_CONTROL.md
+
 import yaml
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel, ConfigDict

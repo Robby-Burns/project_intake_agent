@@ -1,3 +1,8 @@
+# 🤖 Base Agent - The foundational blueprint for all agents in the system.
+# This file enforces the "Worst-Case Coding Standard" by including tenacity for retries
+# and the "Citation Law" by using the Agnostic LLM Factory.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
+
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Dict
 from langchain_core.prompts import ChatPromptTemplate

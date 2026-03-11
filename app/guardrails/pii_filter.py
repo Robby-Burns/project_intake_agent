@@ -1,3 +1,8 @@
+# 🛡️ PII Filter - A guardrail to prevent sensitive data from being processed.
+# This file implements the "Worst-Case Coding Standard" by assuming all user input may be malicious
+# or contain sensitive data, and redacting it before processing.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
+
 import re
 import os
 from typing import List, Optional
@@ -57,10 +62,8 @@ class PIIFilter:
         allow_list = allow_list or []
 
         # 1. Regex Redaction (Baseline - Fast & Strict)
-        # We do this FIRST to catch obvious patterns that the small model might miss
         sanitized_text = text
         for pii_type, pattern in cls.REGEX_PATTERNS.items():
-            # If EMAIL is allowed, skip regex for it
             if pii_type == "EMAIL" and "EMAIL_ADDRESS" in allow_list:
                 continue
 
@@ -71,13 +74,9 @@ class PIIFilter:
             )
             
         # 2. Presidio Redaction (NLP - Context Aware)
-        # Catches things Regex missed (e.g., names, phone numbers in weird formats)
         cls._initialize()
 
-        # Default entities to check
         entities_to_check = ["PERSON", "PHONE_NUMBER", "EMAIL_ADDRESS", "US_SSN", "US_BANK_NUMBER"]
-
-        # Remove allowed entities
         entities_to_check = [e for e in entities_to_check if e not in allow_list]
 
         results = cls._analyzer.analyze(
@@ -86,7 +85,6 @@ class PIIFilter:
             language='en'
         )
         
-        # Define custom operators to match our output format [REDACTED_TYPE]
         operators = {
             "PERSON": OperatorConfig("replace", {"new_value": "[REDACTED_PERSON]"}),
             "PHONE_NUMBER": OperatorConfig("replace", {"new_value": "[REDACTED_PHONE]"}),

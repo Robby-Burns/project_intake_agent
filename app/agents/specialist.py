@@ -1,3 +1,8 @@
+# 🕵️ Specialist Agent - A domain-expert agent that analyzes user input.
+# This agent acts as a "whisperer" to the main interviewer, following the multi-agent debate pattern.
+# Its behavior is governed by the principles of role-playing and structured output.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
+
 from typing import Optional
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
@@ -68,7 +73,8 @@ class SpecialistAgent(BaseAgent):
         Analyzes user input and returns structured data.
         """
         try:
-            return await self.chain.ainvoke({
+            # Use the retry-enabled invoke method from BaseAgent
+            return await self._invoke_chain(self.chain, {
                 "name": self.name,
                 "role": self.role,
                 "domain_focus": self.domain_focus,
@@ -89,7 +95,8 @@ class SpecialistAgent(BaseAgent):
         Generates a domain-specific summary based on the full transcript.
         """
         try:
-            return await self.summary_chain.ainvoke({
+            # Use the retry-enabled invoke method from BaseAgent
+            return await self._invoke_chain(self.summary_chain, {
                 "name": self.name,
                 "role": self.role,
                 "domain_focus": self.domain_focus,

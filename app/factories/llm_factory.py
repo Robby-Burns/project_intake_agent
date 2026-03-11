@@ -1,4 +1,7 @@
-# 🏭 Agnostic LLM Factory
+# 🏭 Agnostic LLM Factory - Creates LLM provider instances.
+# This factory implements the "Agnostic Factory" pattern, a core tenet of the framework,
+# allowing the system to be decoupled from a specific LLM provider (e.g., OpenAI, Anthropic).
+# Reference: agent.md - The System Kernel for AI behavior and rules.
 # Reference: workflow/08_AGNOSTIC_FACTORIES.md
 
 import os

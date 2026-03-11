@@ -1,3 +1,8 @@
+# 🎭 Interviewer Agent - The "face" of the system.
+# This agent synthesizes specialist whispers and communicates with the user,
+# adhering to the conversational and persistence rules defined in agent.md.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
+
 from typing import List, Dict
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -61,7 +66,8 @@ class InterviewerAgent(BaseAgent):
         if not formatted_whispers:
             formatted_whispers = "No specific questions from specialists."
 
-        return await self.chain.ainvoke({
+        # Use the retry-enabled invoke method from BaseAgent
+        return await self._invoke_chain(self.chain, {
             "context_summary": context_summary,
             "recent_history": recent_history,
             "whispers": formatted_whispers,

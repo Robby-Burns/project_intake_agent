@@ -1,4 +1,7 @@
 # 🧪 LLM-as-a-Judge Evaluation Tests
+# This file implements the "LLM-as-a-Judge" pattern, a critical quality gate
+# for ensuring agent output is reliable and high-quality, as mandated by the framework.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
 # Reference: workflow/02_COMPLETE_GUIDE.md (Section 6: Testing Strategy & LLM Evals)
 
 import pytest

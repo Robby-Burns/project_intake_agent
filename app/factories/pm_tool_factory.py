@@ -1,5 +1,9 @@
-# 🏭 Agnostic PM Tool Factory
+# 🏭 Agnostic PM Tool Factory - Creates PM tool adapters.
+# This factory implements the "Agnostic Factory" pattern, a core tenet of the framework,
+# allowing the system to be decoupled from a specific PM tool (e.g., Jira, Monday).
+# Reference: agent.md - The System Kernel for AI behavior and rules.
 # Reference: workflow/08_AGNOSTIC_FACTORIES.md
+
 from app.pm_tools.adapter import PMToolAdapter
 import os
 

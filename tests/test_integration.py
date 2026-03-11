@@ -1,3 +1,8 @@
+# ⚙️ Integration Tests - Verifies the end-to-end flow of the system.
+# This file ensures that all components (Orchestrator, Agents, Factories) work together
+# as expected, following the "No Happy Paths" principle by testing realistic scenarios.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from app.orchestrator.orchestrator import Orchestrator

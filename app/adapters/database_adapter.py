@@ -4,7 +4,9 @@ from typing import List, Dict, Optional
 from app.interfaces.database_adapter import DatabaseAdapter
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.exc import OperationalError
 from datetime import datetime
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
 # SQLAlchemy Setup
 Base = declarative_base()
@@ -26,17 +28,35 @@ class SessionMetadata(Base):
 class PostgresAdapter(DatabaseAdapter):
     """
     PostgreSQL Adapter for state persistence.
+    Includes retry logic for initial connection.
     Reference: workflow/08_AGNOSTIC_FACTORIES.md
     """
     
     def __init__(self, connection_string: Optional[str] = None):
         self.connection_string = connection_string or os.getenv("DATABASE_URL")
         if not self.connection_string:
-             # Fallback to SQLite for local development if not set (though Docker defines it)
              self.connection_string = "sqlite:///local_state.db"
              
         self.engine = create_engine(self.connection_string)
-        Base.metadata.create_all(self.engine) # Auto-migrate for MVP
+        self._connect_with_retry()
+
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_fixed(3),
+        retry=retry_if_exception_type(OperationalError),
+        before_sleep=lambda retry_state: print(f"Retrying database connection... attempt {retry_state.attempt_number}")
+    )
+    def _connect_with_retry(self):
+        """
+        Tries to connect to the database and create tables, with retry logic.
+        """
+        try:
+            Base.metadata.create_all(self.engine)
+            print("✅ Database connection successful and tables created.")
+        except OperationalError as e:
+            print(f"❌ Database connection failed: {e}. Retrying...")
+            raise
+
         self.Session = sessionmaker(bind=self.engine)
 
     def save_conversation_turn(self, session_id: str, user_input: str, bot_response: str) -> None:
@@ -66,7 +86,6 @@ class PostgresAdapter(DatabaseAdapter):
     def save_metadata(self, session_id: str, metadata: Dict[str, str]) -> None:
         session = self.Session()
         try:
-            # Check if exists
             existing = session.query(SessionMetadata).filter_by(session_id=session_id).first()
             if existing:
                 existing.metadata_json = json.dumps(metadata)

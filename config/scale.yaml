@@ -1,5 +1,8 @@
 # 🎛️ SYSTEM CONTROL PANEL
-# Version: 1.5.0
+# This file configures the application's behavior and scale, adhering to the
+# "Configuration as Code" principle. All settings are governed by the rules
+# and architectural patterns defined in agent.md.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
 # Reference: workflow/07_CONFIGURATION_CONTROL.md
 
 deployment:

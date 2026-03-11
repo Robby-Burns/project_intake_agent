@@ -1,8 +1,11 @@
-version: '3.8'
+# 🐳 Docker Compose - Defines the multi-service local environment.
+# This file implements the "Local Dev = Prod" principle by running the API, UI, and Database
+# as separate but connected services, mirroring the production setup.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
+# Reference: workflow/06_INFRASTRUCTURE_AS_CODE.md
 
 services:
   # 1. API Service (Audit, Backend Logic)
-  # Reference: workflow/09_AUDIT_AND_MAINTENANCE.md
   api:
     build:
       context: .
@@ -13,18 +16,20 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://user:pass@db:5432/intake_agent
-      - RISK_SCORE=8
     depends_on:
-      - db
-    volumes:
-      - ./app:/app/app
-      - ./docs:/app/docs
+      db:
+        condition: service_healthy
 
   # 2. UI Service (Streamlit Frontend)
   ui:
     build:
       context: .
-    command: streamlit run app/ui.py --server.port=8501 --server.address=0.0.0.0
+    # --- DEBUGGING COMMAND ---
+    # Temporarily override the startup command to print environment variables and exit.
+    # This will verify if the .env file is being loaded correctly.
+    command: printenv
+    # Original command (commented out):
+    # command: streamlit run app/ui.py --server.port=8501 --server.address=0.0.0.0
     ports:
       - "8501:8501"
     env_file:
@@ -33,13 +38,12 @@ services:
       - DATABASE_URL=postgresql://user:pass@db:5432/intake_agent
       - API_URL=http://api:8000
     depends_on:
-      - api
-      - db
-    volumes:
-      - ./app:/app/app
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
 
   # 3. Database (PostgreSQL)
-  # Reference: workflow/08_AGNOSTIC_FACTORIES.md
   db:
     image: postgres:15-alpine
     environment:
@@ -50,6 +54,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d intake_agent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

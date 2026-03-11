@@ -1,4 +1,7 @@
-# 🏭 Agnostic Database Factory
+# 🏭 Agnostic Database Factory - Creates database adapters.
+# This factory implements the "Agnostic Factory" pattern, a core tenet of the framework,
+# allowing the system to be decoupled from a specific database technology.
+# Reference: agent.md - The System Kernel for AI behavior and rules.
 # Reference: workflow/08_AGNOSTIC_FACTORIES.md
 
 from app.config import config

@@ -1,4 +1,7 @@
 # 🏗️ Production-Grade Dockerfile for ProjectIntakeAgentThree
+# This file implements the "Container-First" strategy, ensuring a reproducible build environment.
+# It follows the principles of security (non-root user) and efficiency (multi-stage build).
+# Reference: agent.md - The System Kernel for AI behavior and rules.
 # Reference: workflow/06_INFRASTRUCTURE_AS_CODE.md
 
 # Stage 1: Builder (Install dependencies)
