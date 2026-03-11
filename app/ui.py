@@ -1,6 +1,7 @@
 import streamlit as st
 import asyncio
 import os
+import uuid
 from dotenv import load_dotenv
 from app.orchestrator.orchestrator import Orchestrator
 
@@ -33,6 +34,10 @@ st.markdown("""
 
 def initialize_session_state():
     """Initialize session state variables."""
+    if "session_id" not in st.session_state:
+        # Generate new session ID for persistence
+        st.session_state.session_id = str(uuid.uuid4())
+        
     if "messages" not in st.session_state:
         # Initial Welcome Message
         welcome_msg = (
@@ -44,7 +49,8 @@ def initialize_session_state():
         st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
     
     if "orchestrator" not in st.session_state:
-        st.session_state.orchestrator = Orchestrator()
+        # Initialize Orchestrator with the session ID for DB persistence
+        st.session_state.orchestrator = Orchestrator(session_id=st.session_state.session_id)
         
     if "processing" not in st.session_state:
         st.session_state.processing = False
@@ -52,13 +58,20 @@ def initialize_session_state():
 async def process_message(user_input: str):
     """Process user message through the orchestrator."""
     orchestrator = st.session_state.orchestrator
-    response = await orchestrator.process_message(user_input)
-    return response
+    try:
+        response = await orchestrator.process_message(user_input)
+        return response
+    except Exception as e:
+        st.error(f"Error processing message: {str(e)}")
+        return "I encountered an error. Please try again."
 
 def main():
     # Header
     st.title("🤖 Project Intake Agent")
     st.markdown("---")
+    
+    # Initialize State first
+    initialize_session_state()
     
     # Sidebar
     with st.sidebar:
@@ -68,7 +81,9 @@ def main():
         orch = st.session_state.orchestrator if "orchestrator" in st.session_state else None
         
         if orch:
+            st.info(f"**Session ID:** {st.session_state.session_id}")
             st.info(f"**Status:** {orch.state}")
+            
             if orch.user_name:
                 st.success(f"**User:** {orch.user_name}")
             if orch.project_name:
@@ -85,10 +100,6 @@ def main():
         st.markdown("### 💡 Tips")
         st.markdown("- Provide clear project goals.")
         st.markdown("- Mention any known risks.")
-        # Removed "Generate Report" tip as persistence mode is active
-
-    # Initialize State
-    initialize_session_state()
 
     # Display Chat History
     for message in st.session_state.messages:
@@ -105,36 +116,33 @@ def main():
         # Process Response
         with st.chat_message("assistant"):
             with st.spinner("Consulting with specialists..."):
-                try:
-                    # Run async orchestrator in sync Streamlit app
-                    response = asyncio.run(process_message(prompt))
-                    st.markdown(response)
+                # Run async orchestrator in sync Streamlit app
+                response = asyncio.run(process_message(prompt))
+                st.markdown(response)
+                
+                # Add bot response to history
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                
+                # Check for PDF generation success message
+                if "Report generated successfully" in response:
+                    # Extract filename from response
+                    # Format: "Report generated successfully: filename.pdf"
+                    filename = response.split(": ")[-1].split("\n")[0].strip()
                     
-                    # Add bot response to history
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                    
-                    # Check for PDF generation success message
-                    if "Report generated successfully" in response:
-                        # Extract filename from response
-                        # Format: "Report generated successfully: filename.pdf"
-                        filename = response.split(": ")[-1].split("\n")[0].strip()
+                    # Ensure we look in the reports directory
+                    if not filename.startswith("reports"):
+                        filepath = os.path.join("reports", filename)
+                    else:
+                        filepath = filename
                         
-                        # Ensure we look in the reports directory
-                        if not filename.startswith("reports"):
-                            filepath = os.path.join("reports", filename)
-                        else:
-                            filepath = filename
-                            
-                        if os.path.exists(filepath):
-                            with open(filepath, "rb") as pdf_file:
-                                st.download_button(
-                                    label="📄 Download Report PDF",
-                                    data=pdf_file,
-                                    file_name=os.path.basename(filepath),
-                                    mime="application/pdf"
-                                )
-                except Exception as e:
-                    st.error(f"An error occurred: {str(e)}")
+                    if os.path.exists(filepath):
+                        with open(filepath, "rb") as pdf_file:
+                            st.download_button(
+                                label="📄 Download Report PDF",
+                                data=pdf_file,
+                                file_name=os.path.basename(filepath),
+                                mime="application/pdf"
+                            )
 
 if __name__ == "__main__":
     main()

@@ -37,12 +37,19 @@ env/
 # Project Specific
 *.pdf
 reports/
-.claude_config.md
-.claude-context.md
-.bugs_tracker.md
+local_state.db
+*.sqlite3
+
+# Project Memory (Keep these tracked!)
+# .build-context.md
+# .bugs_tracker.md
 
 # Logs
 *.log
 
 # Docker
 .docker/
+
+# Coverage
+.coverage
+htmlcov/

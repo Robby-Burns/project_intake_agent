@@ -1,0 +1,57 @@
+# 🎛️ SYSTEM CONTROL PANEL
+# Version: 1.5.0
+# Reference: workflow/07_CONFIGURATION_CONTROL.md
+
+deployment:
+  tier: "small"                 # Options: learning, small, growing, enterprise
+  environment: "dev"            # Options: dev, staging, prod
+  risk_score: 8                 # Medium Risk (Requires circuit breakers, PII redaction)
+
+# 🧠 CONTEXT MANAGEMENT
+context_management:
+  max_history_messages: 20
+  truncation_strategy: "summarize_oldest"
+  rag_top_k_results: 5
+
+# 🎼 ORCHESTRATION ENGINE
+orchestration:
+  engine: "simple_async"        # Current implementation is a custom async orchestrator
+  max_turns: 15                 # Max conversation turns before forced wrap-up
+  soft_limit_turns: 12          # Warning threshold
+
+# 🤖 LLM INTELLIGENCE
+llm:
+  primary:
+    provider: "openai"          # Options: openai, azure, anthropic
+    model: "gpt-4o"
+  specialist:
+    provider: "openai"
+    model: "gpt-4o"
+  cost_efficient:
+    provider: "openai"
+    model: "gpt-4o-mini"
+
+# 💾 DATA PERSISTENCE
+database:
+  type: "postgresql"            # Options: sqlite, postgresql
+
+# 🛡️ SECURITY & GUARDRAILS
+security:
+  pii_redaction: true
+  pii_allow_list: ["PERSON"]    # Allow names for intake, redact others
+
+# 💰 BUDGET GUARDRAILS
+cost_controls:
+  hard_limit_usd: 50.00
+  alert_threshold_usd: 40.00
+
+# 🔍 BI-ANNUAL AUDIT
+audit:
+  schedule_months: [3, 9]             # March and September
+  schedule_day: "first_monday"
+  schedule_time: "06:00"
+  schedule_timezone: "UTC"
+  notification_channel: "none"        # Options: slack | email | teams | webhook | none
+  notification_link: "http://localhost:8501/audit"
+  auto_apply: false                   # Never true. Human approves all changes.
+  cve_check_weekly: true              # Weekly CVE scan between audits

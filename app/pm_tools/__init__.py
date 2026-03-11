@@ -3,6 +3,7 @@ from .adapter import PMToolAdapter
 from .mock import MockAdapter
 from .jira import JiraAdapter
 from .monday import MondayAdapter
+from .planner import PlannerAdapter
 
 def get_pm_tool() -> PMToolAdapter:
     """
@@ -22,6 +23,14 @@ def get_pm_tool() -> PMToolAdapter:
         return MondayAdapter(
             api_key=os.getenv("MONDAY_API_KEY"),
             board_id=os.getenv("MONDAY_BOARD_ID")
+        )
+    elif tool_type == "planner":
+        return PlannerAdapter(
+            tenant_id=os.getenv("MS_TENANT_ID"),
+            client_id=os.getenv("MS_CLIENT_ID"),
+            client_secret=os.getenv("MS_CLIENT_SECRET"),
+            plan_id=os.getenv("MS_PLANNER_PLAN_ID"),
+            bucket_id=os.getenv("MS_PLANNER_BUCKET_ID")
         )
     else:
         return MockAdapter()

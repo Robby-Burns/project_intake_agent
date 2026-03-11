@@ -1,27 +1,25 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
-import os
-from langchain_openai import ChatOpenAI
+from typing import Any, Optional, Dict
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
-from pydantic import BaseModel
+from tenacity import retry, stop_after_attempt, wait_exponential
+from app.factories.llm_factory import LLMFactory
 
 class BaseAgent(ABC):
     """
     Abstract Base Class for all agents.
-    Handles LLM initialization and common logic.
+    Handles LLM initialization via the LLMFactory and adds retry logic.
+    Reference: workflow/08_AGNOSTIC_FACTORIES.md
+    Reference: workflow/02_COMPLETE_GUIDE.md (Section 5: Circuit Breakers)
     """
     
-    def __init__(self, name: str, role: str, model: str = "gpt-4o"):
+    def __init__(self, name: str, role: str, model_type: str = "primary"):
         self.name = name
         self.role = role
-        self.model_name = model
-        self.llm = ChatOpenAI(
-            model=model,
-            temperature=0.7,
-            api_key=os.getenv("OPENAI_API_KEY")
-        )
-    
+        self.model_type = model_type
+        # Use the factory to get the LLM instance based on configuration
+        self.llm = LLMFactory.get_llm(model_type)
+
     @abstractmethod
     async def run(self, input_data: Any) -> Any:
         """
@@ -29,6 +27,17 @@ class BaseAgent(ABC):
         Must be implemented by subclasses.
         """
         pass
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        reraise=True # Reraise the last exception if all retries fail
+    )
+    async def _invoke_chain(self, chain, input_data: Dict[str, Any]):
+        """
+        Helper to invoke a chain with retry logic (Circuit Breaker).
+        """
+        return await chain.ainvoke(input_data)
 
     def _create_chain(self, prompt_template: ChatPromptTemplate, output_parser: Optional[PydanticOutputParser] = None):
         """

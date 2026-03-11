@@ -1,20 +1,55 @@
 version: '3.8'
 
 services:
-  agent-app:
+  # 1. API Service (Audit, Backend Logic)
+  # Reference: workflow/09_AUDIT_AND_MAINTENANCE.md
+  api:
     build:
       context: .
-      args:
-        # Change to en_core_web_sm for local docker builds if space is tight
-        SPACY_MODEL: en_core_web_lg
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/intake_agent
+      - RISK_SCORE=8
+    depends_on:
+      - db
+    volumes:
+      - ./app:/app/app
+      - ./docs:/app/docs
+
+  # 2. UI Service (Streamlit Frontend)
+  ui:
+    build:
+      context: .
+    command: streamlit run app/ui.py --server.port=8501 --server.address=0.0.0.0
     ports:
       - "8501:8501"
     env_file:
       - .env
     environment:
-      - SPACY_MODEL=en_core_web_lg
+      - DATABASE_URL=postgresql://user:pass@db:5432/intake_agent
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+      - db
     volumes:
-      # Mount the app directory for live reloading during development
       - ./app:/app/app
-      - ./docs:/app/docs
-    restart: unless-stopped
+
+  # 3. Database (PostgreSQL)
+  # Reference: workflow/08_AGNOSTIC_FACTORIES.md
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=intake_agent
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
