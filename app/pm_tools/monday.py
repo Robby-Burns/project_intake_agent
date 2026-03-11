@@ -9,12 +9,12 @@ class MondayAdapter(PMToolAdapter):
     Monday.com Adapter using GraphQL API.
     """
     
-    def __init__(self, api_key: str, board_id: str):
+    def __init__(self, api_key: str, board_id: str, files_column_id: str = "file"):
         self.api_url = "https://api.monday.com/v2"
         self.file_url = "https://api.monday.com/v2/file"
         self.headers = {"Authorization": api_key}
         self.board_id = int(board_id) if board_id else 0
-        self.files_column_id = os.getenv("MONDAY_FILES_COLUMN_ID", "file")
+        self.files_column_id = files_column_id
         
     def create_ticket(self, title: str, description: str, pdf_path: Optional[str] = None) -> str:
         print(f"🚀 Creating Monday Item: {title}", flush=True)

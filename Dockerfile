@@ -40,7 +40,8 @@ EXPOSE 8501
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app
 
 # Healthcheck (Mandatory for Production)
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \

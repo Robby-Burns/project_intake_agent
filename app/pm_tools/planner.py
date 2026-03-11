@@ -10,7 +10,7 @@ class PlannerAdapter(PMToolAdapter):
     Handles task creation and file attachments via SharePoint.
     """
     
-    def __init__(self, tenant_id: str, client_id: str, client_secret: str, plan_id: str, bucket_id: str):
+    def __init__(self, tenant_id: str, client_id: str, client_secret: str, plan_id: str, bucket_id: str, sharepoint_drive_id: str):
         self.authority = f"https://login.microsoftonline.com/{tenant_id}"
         self.client_id = client_id
         self.client_secret = client_secret
@@ -20,7 +20,7 @@ class PlannerAdapter(PMToolAdapter):
         self.graph_url = "https://graph.microsoft.com/v1.0"
         
         # SharePoint Config
-        self.sharepoint_drive_id = os.getenv("MS_SHAREPOINT_DRIVE_ID")
+        self.sharepoint_drive_id = sharepoint_drive_id
         
         self.app = msal.ConfidentialClientApplication(
             client_id, authority=self.authority, client_credential=client_secret

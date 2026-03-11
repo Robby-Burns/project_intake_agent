@@ -9,7 +9,7 @@ from app.agents.specialist import SpecialistAgent
 from app.agents.interviewer import InterviewerAgent
 from app.guardrails.pii_filter import PIIFilter
 from app.pdf.generator import PDFGenerator
-from app.pm_tools import get_pm_tool
+from app.factories.pm_tool_factory import PMToolFactory # <-- CORRECT IMPORT
 from app.factories.database_factory import DatabaseFactory
 from app.config import config
 
@@ -105,7 +105,8 @@ class Orchestrator:
             self.unanswered_questions = []
         
         self.pdf_generator = PDFGenerator()
-        self.pm_tool = get_pm_tool()
+        # FIX: Use the new factory
+        self.pm_tool = PMToolFactory.get_adapter()
         
         # Limits from config
         self.max_turns = config.orchestration.max_turns

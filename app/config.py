@@ -2,7 +2,7 @@
 # Reference: workflow/07_CONFIGURATION_CONTROL.md
 import yaml
 from pydantic_settings import BaseSettings
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 
 # --- Pydantic Models for scale.yaml structure ---
@@ -45,6 +45,9 @@ class AppConfig(BaseSettings):
     class Config:
         env_file = '.env'
         env_file_encoding = 'utf-8'
+        # FIX: Tell Pydantic to ignore extra variables from the .env file
+        # that are not defined in this model.
+        extra = 'ignore'
 
 def load_config(path: str = "config/scale.yaml") -> AppConfig:
     """
