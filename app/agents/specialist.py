@@ -24,57 +24,38 @@ class SpecialistAgent(BaseAgent):
     Analyzes input and 'whispers' questions.
     """
     
-    # FIX: Change 'model' to 'model_type' to match BaseAgent constructor
     def __init__(self, name: str, role: str, domain_focus: str, model_type: str = "primary"):
         super().__init__(name, role, model_type)
         self.domain_focus = domain_focus
         self.parser = PydanticOutputParser(pydantic_object=SpecialistOutput)
         
-        # Whisper Prompt
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", """
             You are the {name} Specialist for a Credit Union Project Intake system.
             Your Role: {role}
             Your Focus: {domain_focus}
-            
             Current Project: {project_name}
-            
             Analyze the user's input. If it touches on your domain, suggest a CRITICAL follow-up question.
-            Assign a Priority Score (1-10):
-            - 1-3: Nice to know
-            - 4-7: Important
-            - 8-10: Critical / Blocker / High Risk
-            
+            Assign a Priority Score (1-10): 1-3 (Nice to know), 4-7 (Important), 8-10 (Critical/Blocker).
             Output must be valid JSON matching the schema.
             """),
             ("user", "{input}\n\n{format_instructions}")
         ])
-        
         self.chain = self._create_chain(self.prompt, self.parser)
 
-        # Summary Prompt (New for Phase 2)
         self.summary_prompt = ChatPromptTemplate.from_messages([
             ("system", """
-            You are the {name} Specialist.
-            Your Role: {role}
-            Your Focus: {domain_focus}
-            
+            You are the {name} Specialist. Your Role: {role}. Your Focus: {domain_focus}.
             Read the following project intake transcript for project: {project_name}.
             Write a concise, professional summary (3-4 sentences) specifically for {name} professionals.
             Focus ONLY on risks, requirements, and implications relevant to your domain.
-            Do not summarize general project details unless they impact your domain.
             """),
             ("user", "Transcript:\n{transcript}")
         ])
-        
         self.summary_chain = self._create_chain(self.summary_prompt, StrOutputParser())
 
     async def run(self, user_input: str, project_name: str = "Unknown Project") -> SpecialistOutput:
-        """
-        Analyzes user input and returns structured data.
-        """
         try:
-            # Use the retry-enabled invoke method from BaseAgent
             return await self._invoke_chain(self.chain, {
                 "name": self.name,
                 "role": self.role,
@@ -84,19 +65,10 @@ class SpecialistAgent(BaseAgent):
                 "format_instructions": self.parser.get_format_instructions()
             })
         except Exception as e:
-            return SpecialistOutput(
-                relevant=False,
-                priority_score=0,
-                suggested_question=None,
-                analysis=f"Error processing input: {str(e)}"
-            )
+            return SpecialistOutput(relevant=False, priority_score=0, suggested_question=None, analysis=f"Error processing input: {str(e)}")
 
     async def generate_summary(self, transcript: str, project_name: str = "Unknown Project") -> str:
-        """
-        Generates a domain-specific summary based on the full transcript.
-        """
         try:
-            # Use the retry-enabled invoke method from BaseAgent
             return await self._invoke_chain(self.summary_chain, {
                 "name": self.name,
                 "role": self.role,

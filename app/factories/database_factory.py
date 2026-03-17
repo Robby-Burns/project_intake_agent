@@ -4,12 +4,12 @@
 # Reference: agent.md - The System Kernel for AI behavior and rules.
 # Reference: workflow/08_AGNOSTIC_FACTORIES.md
 
-from app.config import config
 from app.interfaces.database_adapter import DatabaseAdapter
+from app.config import config # <-- Use the global config object
 
 class DatabaseFactory:
     """
-    Factory to create a database adapter based on scale.yaml configuration.
+    Factory to create a database adapter based on the global AppConfig.
     """
     
     _instance = None
@@ -23,13 +23,11 @@ class DatabaseFactory:
             db_type = config.database.type.lower()
             
             if db_type == "postgresql":
-                # Lazy import
                 from app.adapters.database_adapter import PostgresAdapter
                 DatabaseFactory._instance = PostgresAdapter()
             
             elif db_type == "sqlite":
-                # Lazy import
-                from app.adapters.database_adapter import PostgresAdapter # Re-use for sqlite connection string
+                from app.adapters.database_adapter import PostgresAdapter
                 DatabaseFactory._instance = PostgresAdapter(connection_string="sqlite:///local_state.db")
                 
             else:

@@ -1,6 +1,5 @@
 # 🏗️ Application Configuration Loader
 # This file loads configuration from scale.yaml, enforcing the "Configuration as Code" principle.
-# It includes a hard safety check for `audit.auto_apply` as mandated by the framework.
 # Reference: agent.md - The System Kernel for AI behavior and rules.
 # Reference: workflow/07_CONFIGURATION_CONTROL.md
 
@@ -97,5 +96,5 @@ def load_config(path: str = "config/scale.yaml") -> AppConfig:
     except Exception as e:
         raise ValueError(f"Error loading or validating configuration: {e}")
 
-# --- Global Config Instance ---
+# --- Create the global config instance, loaded once at startup ---
 config = load_config()

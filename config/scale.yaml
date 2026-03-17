@@ -19,8 +19,8 @@ context_management:
 # 🎼 ORCHESTRATION ENGINE
 orchestration:
   engine: "simple_async"        # Current implementation is a custom async orchestrator
-  max_turns: 15                 # Max conversation turns before forced wrap-up
-  soft_limit_turns: 12          # Warning threshold
+  max_turns: 5                 # Max conversation turns before forced wrap-up
+  soft_limit_turns: 3          # Warning threshold
 
 # 🤖 LLM INTELLIGENCE
 llm:

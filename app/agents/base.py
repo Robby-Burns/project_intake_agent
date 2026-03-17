@@ -9,21 +9,20 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from tenacity import retry, stop_after_attempt, wait_exponential
 from app.factories.llm_factory import LLMFactory
+from app.config import config # <-- Use the global config object
 
 class BaseAgent(ABC):
     """
     Abstract Base Class for all agents.
     Handles LLM initialization via the LLMFactory and adds retry logic.
-    Reference: workflow/08_AGNOSTIC_FACTORIES.md
-    Reference: workflow/02_COMPLETE_GUIDE.md (Section 5: Circuit Breakers)
     """
     
     def __init__(self, name: str, role: str, model_type: str = "primary"):
         self.name = name
         self.role = role
         self.model_type = model_type
-        # Use the factory to get the LLM instance based on configuration
-        self.llm = LLMFactory.get_llm(model_type)
+        # Use the factory to get the LLM instance
+        self.llm = LLMFactory.get_llm(self.model_type)
 
     @abstractmethod
     async def run(self, input_data: Any) -> Any:

@@ -16,7 +16,8 @@ from app.guardrails.pii_filter import PIIFilter
 from app.pdf.generator import PDFGenerator
 from app.factories.pm_tool_factory import PMToolFactory
 from app.factories.database_factory import DatabaseFactory
-from app.config import config
+from app.factories.storage_factory import StorageFactory
+from app.config import config # <-- Use the global config object
 
 class FinalReportOutput(BaseModel):
     executive_summary: str = Field(description="A professional executive summary of the project intake.")
@@ -25,137 +26,64 @@ class FinalReportOutput(BaseModel):
 class Orchestrator:
     """
     The 'Whisper Engine' Orchestrator.
-    Manages the parallel execution of 8 specialist agents and the interviewer.
-    Refactored to use DatabaseFactory for persistence and LLMFactory (via BaseAgent).
+    Manages agent execution, state, and final reporting using agnostic factories.
     """
     
     def __init__(self, session_id: Optional[str] = None):
         self.session_id = session_id or str(uuid.uuid4())
+
         self.db_adapter = DatabaseFactory.get_adapter()
+        self.storage_adapter = StorageFactory.get_adapter()
         
-        # Initialize Interviewer
         self.interviewer = InterviewerAgent()
-        
-        # Initialize Specialists (Model Mixing handled by LLMFactory and config)
         self.specialists = [
-            SpecialistAgent(
-                "Project Manager", 
-                "PMI Best Practices (PMBOK)", 
-                "Scope, Schedule, Cost, Quality, Resources, and Risk Management aligned with PMI standards.",
-                model_type="specialist"
-            ),
-            SpecialistAgent(
-                "Product Manager", 
-                "Hypothesis-Driven Development (HDD)", 
-                "Outcomes over output. Focus on hypotheses, experiments, success metrics, and member value.",
-                model_type="specialist"
-            ),
-            SpecialistAgent(
-                "IT Specialist", 
-                "Enterprise Architecture (TOGAF/AWS Well-Architected)", 
-                "Scalability, reliability, integration patterns, and technical debt management.",
-                model_type="specialist"
-            ),
-            SpecialistAgent(
-                "InfoSec", 
-                "NIST Cybersecurity Framework / GLBA", 
-                "Identify, Protect, Detect, Respond, Recover. Focus on data privacy and financial compliance.",
-                model_type="specialist"
-            ),
-            SpecialistAgent(
-                "ERM", 
-                "COSO ERM Framework", 
-                "Risk appetite, vendor risk management, regulatory compliance, and governance.",
-                model_type="specialist"
-            ),
-            SpecialistAgent(
-                "Marketing", 
-                "Marketing Mix (4Ps) & Member Lifecycle", 
-                "Product, Price, Place, Promotion. Focus on member acquisition, retention, and brand alignment.",
-                model_type="cost_efficient"
-            ),
-            SpecialistAgent(
-                "Training", 
-                "ADDIE Model", 
-                "Analyze, Design, Develop, Implement, Evaluate. Focus on staff readiness and procedure documentation.",
-                model_type="cost_efficient"
-            ),
-            SpecialistAgent(
-                "Accounting", 
-                "GAAP & ROI Analysis", 
-                "Capital vs Expense (CapEx/OpEx), GL coding, TCO (Total Cost of Ownership), and financial reporting.",
-                model_type="cost_efficient"
-            ),
+            SpecialistAgent("Project Manager", "PMI Best Practices (PMBOK)", "Scope, Schedule, Cost...", model_type="specialist"),
+            SpecialistAgent("Product Manager", "Hypothesis-Driven Development (HDD)", "Outcomes over output...", model_type="specialist"),
+            SpecialistAgent("IT Specialist", "Enterprise Architecture (TOGAF/AWS Well-Architected)", "Scalability, reliability...", model_type="specialist"),
+            SpecialistAgent("InfoSec", "NIST Cybersecurity Framework / GLBA", "Identify, Protect, Detect...", model_type="specialist"),
+            SpecialistAgent("ERM", "COSO ERM Framework", "Risk appetite, vendor risk...", model_type="specialist"),
+            SpecialistAgent("Marketing", "Marketing Mix (4Ps) & Member Lifecycle", "Product, Price, Place...", model_type="cost_efficient"),
+            SpecialistAgent("Training", "ADDIE Model", "Analyze, Design, Develop...", model_type="cost_efficient"),
+            SpecialistAgent("Accounting", "GAAP & ROI Analysis", "Capital vs Expense (CapEx/OpEx)...", model_type="cost_efficient"),
         ]
         
-        # Load State from Database
         self.conversation_history = self.db_adapter.get_conversation_history(self.session_id)
-        
-        # Load Metadata from Database
         metadata = self.db_adapter.get_metadata(self.session_id)
         if metadata:
-            self.vp_number = metadata.get("vp_number")
-            self.user_name = metadata.get("user_name")
-            self.project_name = metadata.get("project_name")
-            self.stakeholders = metadata.get("stakeholders")
+            self.vp_number, self.user_name, self.project_name, self.stakeholders = metadata.get("vp_number"), metadata.get("user_name"), metadata.get("project_name"), metadata.get("stakeholders")
             self.state = metadata.get("state", "GET_NAME")
-            self.unanswered_questions = metadata.get("unanswered_questions", []) # Need to parse JSON if implementing fully
+            self.unanswered_questions = []
         else:
-            self.vp_number = None
-            self.user_name = None
-            self.project_name = None
-            self.stakeholders = None
+            self.vp_number, self.user_name, self.project_name, self.stakeholders = None, None, None, None
             self.state = "GET_NAME"
             self.unanswered_questions = []
         
         self.pdf_generator = PDFGenerator()
         self.pm_tool = PMToolFactory.get_adapter()
         
-        # Limits from config
         self.max_turns = config.orchestration.max_turns
         self.soft_limit = config.orchestration.soft_limit_turns
 
     def save_state(self):
-        """
-        Saves metadata and state to the database.
-        """
-        metadata = {
-            "vp_number": self.vp_number,
-            "user_name": self.user_name,
-            "project_name": self.project_name,
-            "stakeholders": self.stakeholders,
-            "state": self.state,
-        }
+        metadata = {"vp_number": self.vp_number, "user_name": self.user_name, "project_name": self.project_name, "stakeholders": self.stakeholders, "state": self.state}
         self.db_adapter.save_metadata(self.session_id, metadata)
 
     async def process_message(self, user_input: str) -> str:
-        """
-        Main pipeline:
-        1. Sanitize Input (Guardrails)
-        2. State Machine (Metadata Collection)
-        3. Broadcast to Specialists (Parallel)
-        4. Synthesize Response (Interviewer)
-        """
-        # 1. Guardrails: PII Redaction
         allow_list = []
         if self.state in ["GET_NAME", "GET_STAKEHOLDERS", "GET_PROJECT"]:
             if "PERSON" in config.security.pii_allow_list:
                 allow_list.append("PERSON")
-            
         sanitized_input = PIIFilter.redact(user_input, allow_list=allow_list)
         
-        # 2. State Machine for Metadata
         response = None
         if self.state == "GET_NAME":
             self.user_name = sanitized_input
             self.state = "GET_PROJECT"
             response = f"Thanks {self.user_name}. What is the name of this project?"
-            
         elif self.state == "GET_PROJECT":
             self.project_name = sanitized_input
             self.state = "GET_VP"
             response = f"Got it. Please provide your VP Number exactly in this format **VP-123** for authorization."
-            
         elif self.state == "GET_VP":
             vp_input = sanitized_input.upper().strip()
             if PIIFilter.validate_vp_number(vp_input):
@@ -164,7 +92,6 @@ class Orchestrator:
                 response = f"VP Number verified. Who are the key stakeholders for '{self.project_name}'?"
             else:
                 response = "Invalid format. Please enter your VP Number exactly in this format **VP-123**."
-
         elif self.state == "GET_STAKEHOLDERS":
             self.stakeholders = sanitized_input
             self.state = "INTERVIEW"
@@ -182,40 +109,22 @@ class Orchestrator:
         if current_turns >= self.max_turns:
             return await self.finalize_session()
 
-        # 3. Parallel Execution (The Whisper Engine)
-        specialist_tasks = [
-            agent.run(sanitized_input, project_name=self.project_name) for agent in self.specialists
-        ]
+        specialist_tasks = [agent.run(sanitized_input, project_name=self.project_name) for agent in self.specialists]
         results = await asyncio.gather(*specialist_tasks)
         
-        active_whispers = []
-        for agent, result in zip(self.specialists, results):
-            if result.relevant:
-                whisper = {
-                    "agent_name": agent.name,
-                    "priority": result.priority_score,
-                    "question": result.suggested_question,
-                    "analysis": result.analysis
-                }
-                active_whispers.append(whisper)
-                self.unanswered_questions.append(whisper)
-
+        active_whispers = [
+            {"agent_name": agent.name, "priority": result.priority_score, "question": result.suggested_question, "analysis": result.analysis}
+            for agent, result in zip(self.specialists, results) if result.relevant
+        ]
+        for whisper in active_whispers: self.unanswered_questions.append(whisper)
         active_whispers.sort(key=lambda x: x['priority'], reverse=True)
         
-        # 4. Interviewer Synthesis
         context_summary = f"Project: {self.project_name}. User: {self.user_name}. Stakeholders: {self.stakeholders}."
-        
         recent_history = "\n".join([f"User: {entry['user']}\nBot: {entry['bot']}" for entry in self.conversation_history[-3:]])
-        
-        if current_turns >= self.soft_limit:
+        if current_turns >= self.max_turns:
             context_summary += " [SYSTEM NOTE: We are approaching the time limit. Start wrapping up.]"
         
-        response = await self.interviewer.run(
-            user_input=sanitized_input,
-            whispers=active_whispers,
-            context_summary=context_summary,
-            recent_history=recent_history
-        )
+        response = await self.interviewer.run(user_input=sanitized_input, whispers=active_whispers, context_summary=context_summary, recent_history=recent_history)
         
         self.conversation_history.append({"user": sanitized_input, "bot": response})
         self.db_adapter.save_conversation_turn(self.session_id, sanitized_input, response)
@@ -224,83 +133,36 @@ class Orchestrator:
         return response
 
     async def finalize_session(self) -> str:
-        """
-        Generates the PDF report, creates a PM ticket, and ends the session.
-        """
         transcript_text = "\n".join([f"User: {entry['user']}\nBot: {entry['bot']}" for entry in self.conversation_history])
         
         parser = PydanticOutputParser(pydantic_object=FinalReportOutput)
-        summary_prompt = [
-            SystemMessage(content="You are an expert Project Analyst. Summarize the following project intake interview."),
-            HumanMessage(content=f"""
-            Project: {self.project_name}
-            Transcript:
-            {transcript_text}
-            
-            {parser.get_format_instructions()}
-            """)
-        ]
+        summary_prompt = [SystemMessage(content="..."), HumanMessage(content=f"Project: {self.project_name}\nTranscript:\n{transcript_text}\n\n{parser.get_format_instructions()}")]
         
         try:
-            chain = self.interviewer.llm | parser
-            report_data = await chain.ainvoke(summary_prompt)
-            executive_summary = report_data.executive_summary
-            key_findings = report_data.key_findings
+            report_data = await (self.interviewer.llm | parser).ainvoke(summary_prompt)
+            executive_summary, key_findings = report_data.executive_summary, report_data.key_findings
         except Exception as e:
-            executive_summary = "Summary generation failed."
-            key_findings = ["Error generating key findings."]
-            print(f"Error generating summary: {e}")
+            executive_summary, key_findings = "Summary generation failed.", [f"Error: {e}"]
 
-        summary_tasks = [
-            agent.generate_summary(transcript_text, project_name=self.project_name) for agent in self.specialists
-        ]
+        summary_tasks = [agent.generate_summary(transcript_text, project_name=self.project_name) for agent in self.specialists]
         domain_summaries = await asyncio.gather(*summary_tasks)
         
         specialist_data = {}
         for agent, summary in zip(self.specialists, domain_summaries):
-            agent_questions = [
-                q for q in self.unanswered_questions 
-                if q['agent_name'] == agent.name
-            ]
-            agent_questions.sort(key=lambda x: x['priority'], reverse=True)
-            top_5_questions = agent_questions[:5]
+            agent_questions = sorted([q for q in self.unanswered_questions if q['agent_name'] == agent.name], key=lambda x: x['priority'], reverse=True)
+            specialist_data[agent.name] = {"summary": summary, "questions": agent_questions[:5]}
+        
+        try:
+            file_name = f"{self.project_name.replace(' ', '_')}_Report.pdf"
+            pdf_bytes = self.pdf_generator.generate(project_name=self.project_name, user_name=self.user_name, vp_number=self.vp_number, stakeholders=self.stakeholders, executive_summary=executive_summary, key_findings=key_findings, specialist_data=specialist_data, transcript=self.conversation_history)
             
-            specialist_data[agent.name] = {
-                "summary": summary,
-                "questions": top_5_questions
-            }
-        
-        filename = f"{self.project_name.replace(' ', '_')}_Report.pdf"
-        self.pdf_generator.filename = filename
-        
-        success = self.pdf_generator.generate(
-            project_name=self.project_name,
-            user_name=self.user_name,
-            vp_number=self.vp_number,
-            stakeholders=self.stakeholders,
-            executive_summary=executive_summary,
-            key_findings=key_findings,
-            specialist_data=specialist_data,
-            transcript=self.conversation_history
-        )
-        
-        ticket_link = "Ticket creation failed"
-        if success:
-            try:
-                full_pdf_path = self.pdf_generator.filename
-                if not full_pdf_path.startswith("reports"):
-                    full_pdf_path = os.path.join("reports", full_pdf_path)
-                
-                ticket_link = self.pm_tool.create_ticket(
-                    title=f"Intake: {self.project_name}",
-                    description=f"**Executive Summary:**\n{executive_summary}\n\n**Requester:** {self.user_name} ({self.vp_number})",
-                    pdf_path=full_pdf_path
-                )
-            except Exception as e:
-                print(f"PM Tool Tool Error: {e}")
-        
-        if success:
-            return (f"Interview complete. Report generated successfully: {filename}\n\n"
+            saved_path = self.storage_adapter.save(file_name, pdf_bytes)
+            
+            ticket_link = self.pm_tool.create_ticket(title=f"Intake: {self.project_name}", description=f"**Executive Summary:**\n{executive_summary}\n\n**Requester:** {self.user_name} ({self.vp_number})", pdf_path=saved_path)
+            
+            return (f"Interview complete. Report generated successfully and saved to {saved_path}\n\n"
                     f"✅ **Ticket Created:** {ticket_link}\n\n"
                     f"Thank you. Someone from the Project Team will be in touch shortly.")
-        return "Interview complete, but report generation failed."
+        except Exception as e:
+            print(f"Finalization Error: {e}")
+            return f"Interview complete, but report finalization failed. Error: {e}"
